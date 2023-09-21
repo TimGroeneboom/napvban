@@ -50,6 +50,8 @@ namespace nap
 			void process() override;
 
 			moodycamel::ConcurrentQueue<float> mQueue;  // New samples are queued here from a different thread.
+            std::vector<SampleValue> mSamples;
+            int mBufferSize;
 		};
 
 	}
