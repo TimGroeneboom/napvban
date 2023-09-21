@@ -31,6 +31,12 @@ namespace nap
          * @return Has to return the name of the VBAN audio stream that this receiver will handle.
          */
         virtual const std::string& getStreamName() = 0;
+
+        /**
+         * Returns sample rate used by listener
+         * @return sample rate used by listener
+         */
+        virtual int getSampleRate() const = 0;
     };
 
 

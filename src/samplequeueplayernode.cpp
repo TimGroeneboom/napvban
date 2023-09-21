@@ -9,6 +9,7 @@
 RTTI_BEGIN_CLASS_NO_DEFAULT_CONSTRUCTOR(nap::audio::SampleQueuePlayerNode)
 RTTI_PROPERTY("audioOutput", &nap::audio::SampleQueuePlayerNode::audioOutput, nap::rtti::EPropertyMetaData::Embedded)
 RTTI_PROPERTY("maxQueueSize", &nap::audio::SampleQueuePlayerNode::mMaxQueueSize, nap::rtti::EPropertyMetaData::Default)
+RTTI_PROPERTY("verbose", &nap::audio::SampleQueuePlayerNode::mMaxQueueSize, nap::rtti::EPropertyMetaData::Default)
 RTTI_END_CLASS
 
 namespace nap
@@ -33,7 +34,8 @@ namespace nap
                 }
             }else
             {
-                nap::Logger::warn("%s: Dropping samples because buffer is getting to big", std::string(get_type().get_name()).c_str());
+                if(mVerbose)
+                    nap::Logger::warn("%s: Dropping samples because buffer is getting to big", std::string(get_type().get_name()).c_str());
             }
 		}
 
@@ -57,7 +59,8 @@ namespace nap
             }else
             {
                 // not enough samples in queue, fill with silence
-                nap::Logger::warn("%s: Not enough samples in queue", std::string(get_type().get_name()).c_str());
+                if(mVerbose)
+                    nap::Logger::warn("%s: Not enough samples in queue", std::string(get_type().get_name()).c_str());
                 auto& outputBuffer = getOutputBuffer(audioOutput);
                 std::fill(outputBuffer.begin(), outputBuffer.end(), 0.0f);
             }

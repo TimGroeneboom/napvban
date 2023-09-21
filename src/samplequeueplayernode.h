@@ -43,7 +43,8 @@ namespace nap
              */
 			void queueSamples(const float* samples, size_t numSamples);
 
-            int mMaxQueueSize = 4096;
+            int mMaxQueueSize = 4096; ///< Property: "MaxQueueSize" the amount of samples that the queue is allowed to have
+            bool mVerbose = false; ///< Property: "Verbose" enable logging
 		private:
 			// Inherited from Node
 			void process() override;

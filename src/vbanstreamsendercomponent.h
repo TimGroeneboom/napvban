@@ -20,53 +20,94 @@
 
 namespace nap
 {
-
 	namespace audio
 	{
+        // Forward declares
+		class VBANStreamSenderComponentInstance;
 
-		class VbanStreamSenderComponentInstance;
-
-
-		class NAPAPI VbanStreamSenderComponent : public AudioComponentBase
+        /**
+         * The VBANStreamSenderComponent takes the input of an audio component and translates that into a VBAN stream
+         * that will be send via the UDP Client
+         */
+		class NAPAPI VBANStreamSenderComponent : public AudioComponentBase
 		{
 			RTTI_ENABLE(AudioComponentBase)
-			DECLARE_COMPONENT(VbanStreamSenderComponent, VbanStreamSenderComponentInstance)
-
+			DECLARE_COMPONENT(VBANStreamSenderComponent, VBANStreamSenderComponentInstance)
 		public:
 			// Properties
-			ResourcePtr<UDPClient> mUdpClient = nullptr;
-			std::string mStreamName			  = "localhost";
+			ResourcePtr<UDPClient> mUdpClient = nullptr; ///< property: 'UDPClient' The udpclient that sends the VBAN packets
+			std::string mStreamName			  = "localhost"; ///< property: 'StreamName' The streamname of the VBAN stream
 			nap::ComponentPtr<audio::AudioComponentBase> mInput; ///< property: 'Input' The component whose audio output will be send
-			std::vector<int> mChannelRouting;
-
-		public:
+			std::vector<int> mChannelRouting; ///< property: 'ChannelRouting' The component whose audio output will be send
 		};
 
-
-		class NAPAPI VbanStreamSenderComponentInstance : public AudioComponentBaseInstance, public DynamicProcessorNode::IProcessor
+        /**
+         * VBANStreamSenderComponentInstance
+         * The instance of the VBANStreamSenderComponent, implements the DynamicProcessorNode::IProcessor interface
+         */
+		class NAPAPI VBANStreamSenderComponentInstance : public AudioComponentBaseInstance, public DynamicProcessorNode::IProcessor
 		{
 			RTTI_ENABLE(AudioComponentBaseInstance)
 		public:
-			VbanStreamSenderComponentInstance(EntityInstance& entity, Component& resource)
+            /**
+             * Constructor
+             * @param entity entity
+             * @param resource resource
+             */
+			VBANStreamSenderComponentInstance(EntityInstance& entity, Component& resource)
 				: AudioComponentBaseInstance(entity, resource)
 			{
 			}
 
-			void onDestroy() override;
-			bool init(utility::ErrorState& errorState) override;
+            /**
+             * Initializes the instance, returns false on failure
+             * @param errorState contains any error messages
+             * @return false on failure
+             */
+            bool init(utility::ErrorState& errorState) override;
 
-            // Inherited from DynamicProcessorNode::IProcessor
+            /**
+             * Called before deconstruction
+             * Removes listener from VBANPacketReceiver
+             */
+            void onDestroy() override;
+
+            /**
+             * Processes the buffer for designated channel. Converts the buffer into vban packets
+             * @param buffer the buffer
+             * @param channel the channel
+             */
             void processBuffer(const std::vector<float>& buffer, int channel) override;
 
-			// Inherited from AudioComponentBaseInstance
+            /**
+             * Returns amount of channels
+             * @return amount of channels
+             */
 			int getChannelCount() const override { return mInput->getChannelCount(); }
+
+            /**
+             * Returns output pin for given channel, no bound checking, assert on out of bound
+             * @param channel the channel
+             * @return OutputPin for channel
+             */
 			OutputPin* getOutputForChannel(int channel) override { return mInput->getOutputForChannel(channel); }
 
+            /**
+             * Sets streamname this VBANStreamSender accepts
+             * @param streamName this VBANStreamSender accepts
+             */
+            void setStreamName(const std::string& streamName){ mStreamName = streamName; }
+
+            /**
+             * Returns streamname this VBANStreamPlayer accepts
+             * @return streamname this VBANStreamPlayer accepts
+             */
+            const std::string& getStreamName() { return mStreamName; }
 		private:
-			ComponentInstancePtr<audio::AudioComponentBase> mInput	= {this, &VbanStreamSenderComponent::mInput};
+			ComponentInstancePtr<audio::AudioComponentBase> mInput	= {this, &VBANStreamSenderComponent::mInput};
 			audio::SafeOwner<audio::DynamicProcessorNode> mDynamicProcessorNode = nullptr;
 
-			VbanStreamSenderComponent* mResource = nullptr;
+			VBANStreamSenderComponent* mResource = nullptr;
 			audio::AudioService* mAudioService	 = nullptr;
 			UDPClient* mUdpClient				 = nullptr;
 			std::vector<int> mChannelRouting;
@@ -74,6 +115,7 @@ namespace nap
 			std::string mStreamName;
 			uint32_t mFrameCount = 0;
             std::vector<std::vector<char>> mBuffers;
+            uint8_t mSampleRateFormat = 0;
 		};
 	}
 }

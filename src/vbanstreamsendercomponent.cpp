@@ -5,20 +5,20 @@
 #include "vbanstreamsendercomponent.h"
 #include "udppacket.h"
 #include "dynamicprocessornode.h"
-
+#include "vbanutils.h"
 #include "vban/vban.h"
 
 #include <entity.h>
 #include <audio/service/audioservice.h>
 #include <audio/node/outputnode.h>
 
-RTTI_BEGIN_CLASS(nap::audio::VbanStreamSenderComponent)
-RTTI_PROPERTY("UdpClient", &nap::audio::VbanStreamSenderComponent::mUdpClient, nap::rtti::EPropertyMetaData::Required)
-RTTI_PROPERTY("Input", &nap::audio::VbanStreamSenderComponent::mInput, nap::rtti::EPropertyMetaData::Required)
-RTTI_PROPERTY("StreamName", &nap::audio::VbanStreamSenderComponent::mStreamName, nap::rtti::EPropertyMetaData::Default)
+RTTI_BEGIN_CLASS(nap::audio::VBANStreamSenderComponent)
+RTTI_PROPERTY("UdpClient", &nap::audio::VBANStreamSenderComponent::mUdpClient, nap::rtti::EPropertyMetaData::Required)
+RTTI_PROPERTY("Input", &nap::audio::VBANStreamSenderComponent::mInput, nap::rtti::EPropertyMetaData::Required)
+RTTI_PROPERTY("StreamName", &nap::audio::VBANStreamSenderComponent::mStreamName, nap::rtti::EPropertyMetaData::Default)
 RTTI_END_CLASS
 
-RTTI_BEGIN_CLASS_NO_DEFAULT_CONSTRUCTOR(nap::audio::VbanStreamSenderComponentInstance)
+RTTI_BEGIN_CLASS_NO_DEFAULT_CONSTRUCTOR(nap::audio::VBANStreamSenderComponentInstance)
 		RTTI_CONSTRUCTOR(nap::EntityInstance&, nap::Component &)
 RTTI_END_CLASS
 
@@ -26,37 +26,51 @@ using namespace nap::audio;
 
 namespace nap
 {
-	void VbanStreamSenderComponentInstance::onDestroy()
+	void VBANStreamSenderComponentInstance::onDestroy()
 	{
         mDynamicProcessorNode->removeProcessor(this);
 	}
 
 
-	bool VbanStreamSenderComponentInstance::init(utility::ErrorState& errorState)
+	bool VBANStreamSenderComponentInstance::init(utility::ErrorState& errorState)
 	{
-		VbanStreamSenderComponent* resource = getComponent<VbanStreamSenderComponent>();
+        // acquire audio service and node manager
+        mAudioService = getEntityInstance()->getCore()->getService<AudioService>();
+        auto& nodeManager = mAudioService->getNodeManager();
+
+        // acquire resources
+		auto* resource = getComponent<VBANStreamSenderComponent>();
 		mResource = resource;
-
-		mAudioService = getEntityInstance()->getCore()->getService<AudioService>();
-		auto& nodeManager = mAudioService->getNodeManager();
-
 		mChannelRouting = resource->mChannelRouting;
+        mStreamName = mResource->mStreamName;
+        mUdpClient = mResource->mUdpClient.get();
+
+        // acquire sample rate format
+        if(!utility::getVBANSampleRateFormatFromSampleRate(mSampleRateFormat,
+                                                           static_cast<int>(nodeManager.getSampleRate()),
+                                                           errorState))
+            return false;
+
+        // configure channel routing
 		if (mChannelRouting.empty())
 		{
 			for (auto channel = 0; channel < mInput->getChannelCount(); ++channel)
 				mChannelRouting.emplace_back(channel);
 		}
-
 		for (auto channel = 0; channel < mChannelRouting.size(); ++channel)
-			if (mChannelRouting[channel] >= mInput->getChannelCount())
-			{
-				errorState.fail("%s: Trying to route input channel that is out of bounds.", resource->mID.c_str());
-				return false;
-			}
+        {
+            if (mChannelRouting[channel] >= mInput->getChannelCount())
+            {
+                errorState.fail("%s: Trying to route input channel that is out of bounds.", resource->mID.c_str());
+                return false;
+            }
+        }
 
+        // Create the dynamic processor node
         mDynamicProcessorNode = nodeManager.makeSafe<DynamicProcessorNode>(nodeManager);
         mDynamicProcessorNode->registerProcessor(this);
 
+        // Connect outputs to dynamic processor node
 		for (auto channel = 0; channel < mChannelRouting.size(); ++channel)
 		{
 			if (mChannelRouting[channel] < 0)
@@ -65,9 +79,7 @@ namespace nap
 			mDynamicProcessorNode->inputs.connect(*mInput->getOutputForChannel(mChannelRouting[channel]));
 		}
 
-		mStreamName = mResource->mStreamName;
-		mUdpClient = mResource->mUdpClient.get();
-
+        // create the dynamic buffers
         for(int i = 0; i < mChannelRouting.size(); i++)
         {
             mBuffers.emplace_back(std::vector<char>());
@@ -77,7 +89,7 @@ namespace nap
 	}
 
 
-	void VbanStreamSenderComponentInstance::processBuffer(const std::vector<nap::audio::SampleValue>& buffer, int channel)
+	void VBANStreamSenderComponentInstance::processBuffer(const std::vector<nap::audio::SampleValue>& buffer, int channel)
 	{
         assert(channel < mBuffers.size()); // channel should always be in range
 
@@ -119,7 +131,7 @@ namespace nap
                 auto* const hdr = (struct VBanHeader*)(&buffer[0]);
                 hdr->vban       = *(int32_t*)("VBAN");
                 hdr->format_nbc = mChannelRouting.size() - 1;
-                hdr->format_SR  = 16; // 44100
+                hdr->format_SR  = mSampleRateFormat;
                 hdr->format_bit = VBAN_BITFMT_16_INT;
                 strncpy(hdr->streamname, mStreamName.c_str(), VBAN_STREAM_NAME_SIZE-1);
                 hdr->nuFrame    = mFrameCount;

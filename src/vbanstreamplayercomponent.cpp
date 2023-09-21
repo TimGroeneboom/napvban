@@ -13,14 +13,14 @@
 #include <audio/service/audioservice.h>
 
 // RTTI
-RTTI_BEGIN_CLASS(nap::audio::VbanStreamPlayerComponent)
-		RTTI_PROPERTY("VBANPacketReceiver", &nap::audio::VbanStreamPlayerComponent::mVBANPacketReceiver, nap::rtti::EPropertyMetaData::Required)
-		RTTI_PROPERTY("ChannelRouting", &nap::audio::VbanStreamPlayerComponent::mChannelRouting,nap::rtti::EPropertyMetaData::Default)
-		RTTI_PROPERTY("MaxBufferSize", &nap::audio::VbanStreamPlayerComponent::mMaxBufferSize, nap::rtti::EPropertyMetaData::Default)
-		RTTI_PROPERTY("StreamName", &nap::audio::VbanStreamPlayerComponent::mStreamName, nap::rtti::EPropertyMetaData::Default)
+RTTI_BEGIN_CLASS(nap::audio::VBANStreamPlayerComponent)
+		RTTI_PROPERTY("VBANPacketReceiver", &nap::audio::VBANStreamPlayerComponent::mVBANPacketReceiver, nap::rtti::EPropertyMetaData::Required)
+		RTTI_PROPERTY("ChannelRouting", &nap::audio::VBANStreamPlayerComponent::mChannelRouting, nap::rtti::EPropertyMetaData::Default)
+		RTTI_PROPERTY("MaxBufferSize", &nap::audio::VBANStreamPlayerComponent::mMaxBufferSize, nap::rtti::EPropertyMetaData::Default)
+		RTTI_PROPERTY("StreamName", &nap::audio::VBANStreamPlayerComponent::mStreamName, nap::rtti::EPropertyMetaData::Default)
 RTTI_END_CLASS
 
-RTTI_BEGIN_CLASS_NO_DEFAULT_CONSTRUCTOR(nap::audio::VbanStreamPlayerComponentInstance)
+RTTI_BEGIN_CLASS_NO_DEFAULT_CONSTRUCTOR(nap::audio::VBANStreamPlayerComponentInstance)
 		RTTI_CONSTRUCTOR(nap::EntityInstance &, nap::Component &)
 RTTI_END_CLASS
 
@@ -29,22 +29,28 @@ namespace nap
 
 	namespace audio
 	{
-		void VbanStreamPlayerComponentInstance::onDestroy()
+		void VBANStreamPlayerComponentInstance::onDestroy()
 		{
             mVbanListener->removeStreamListener(this);
 		}
 
-		bool VbanStreamPlayerComponentInstance::init(utility::ErrorState& errorState)
+
+		bool VBANStreamPlayerComponentInstance::init(utility::ErrorState& errorState)
 		{
-			mResource = getComponent<VbanStreamPlayerComponent>();
+            // acquire audio service
+            mAudioService = getEntityInstance()->getCore()->getService<AudioService>();
+
+            // acquire resources
+			mResource = getComponent<VBANStreamPlayerComponent>();
 			mVbanListener = mResource->mVBANPacketReceiver.get();
 			mStreamName = mResource->mStreamName;
-
-			mAudioService = getEntityInstance()->getCore()->getService<AudioService>();
 			mNodeManager = &mAudioService->getNodeManager();
-
 			mChannelRouting = mResource->mChannelRouting;
 
+            // get sample rate
+            mSampleRate = static_cast<int>(mNodeManager->getSampleRate());
+
+            // create buffer player for each channel
 			for (auto channel = 0; channel < mChannelRouting.size(); ++channel)
 			{
 				auto bufferPlayer = mNodeManager->makeSafe<SampleQueuePlayerNode>(*mNodeManager);
@@ -52,18 +58,14 @@ namespace nap
 				mBufferPlayers.emplace_back(std::move(bufferPlayer));
 			}
 
+            // register to the packet receiver
             mVbanListener->registerStreamListener(this);
 
 			return true;
 		}
 
 
-		void VbanStreamPlayerComponentInstance::update(double deltaTime)
-		{
-		}
-
-
-		void VbanStreamPlayerComponentInstance::pushBuffers(std::vector<std::vector<float>>& buffers)
+		void VBANStreamPlayerComponentInstance::pushBuffers(std::vector<std::vector<float>>& buffers)
 		{
 			if(buffers.size() == getChannelCount())
 			{

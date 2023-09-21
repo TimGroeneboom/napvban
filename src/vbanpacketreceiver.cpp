@@ -8,6 +8,7 @@
 #include "vbanstreamplayercomponent.h"
 
 #include "vban/vban.h"
+#include "vbanutils.h"
 
 RTTI_BEGIN_CLASS(nap::VBANPacketReceiver)
 RTTI_PROPERTY("Server", &nap::VBANPacketReceiver::mServer, nap::rtti::EPropertyMetaData::Required)
@@ -19,6 +20,7 @@ namespace nap
 	bool VBANPacketReceiver::init(utility::ErrorState& errorState)
 	{
         mServer->registerListenerSlot(mPacketReceivedSlot);
+
 		return true;
 	}
 
@@ -55,22 +57,32 @@ namespace nap
             {
                 for (size_t i = 0; i < float_buffer_size; i++)
                 {
-                    char byte_1 = packet.data()[c * float_buffer_size * sample_size + VBAN_HEADER_SIZE + i * sample_size];
-                    char byte_2 = packet.data()[c * float_buffer_size * sample_size + VBAN_HEADER_SIZE + i * sample_size + 1];
+                    int p = c * float_buffer_size * sample_size + VBAN_HEADER_SIZE + i * sample_size;
+                    char byte_1 = packet.data()[p];
+                    char byte_2 = packet.data()[p + 1];
                     short original_value = ((static_cast<short>(byte_2)) << 8) | (0x00ff & byte_1);
 
                     buffers[c][i] = ((float) original_value) / (float) 32768;
                 }
             }
 
-			// get stream name, use it to forward buffers to any registered stream audio receivers
-			std::string stream_name(hdr->streamname);
-			for (auto* receiver : mReceivers)
+            // get sample rate
+            int const sample_rate_format   = hdr->format_SR & VBAN_SR_MASK;
+            int sample_rate = 0;
+            if(utility::getSampleRateFromVBANSampleRateFormat(sample_rate, sample_rate_format, errorState))
             {
-                if (receiver->getStreamName() == stream_name)
+                // get stream name, use it to forward buffers to any registered stream audio receivers
+                std::string stream_name(hdr->streamname);
+                for(auto* receiver : mReceivers)
                 {
-                    receiver->pushBuffers(buffers);
+                    if(receiver->getStreamName() == stream_name)
+                    {
+                        receiver->pushBuffers(buffers);
+                    }
                 }
+            }else
+            {
+                nap::Logger::error(errorState.toString());
             }
 		}
         else
@@ -86,16 +98,16 @@ namespace nap
 		enum VBanProtocol protocol = static_cast<VBanProtocol>(VBAN_PROTOCOL_UNDEFINED_4);
 		enum VBanCodec codec = static_cast<VBanCodec>(VBAN_BIT_RESOLUTION_MAX);
 
-		if( !errorState.check(buffer != 0, "buffer is null ptr") )
+		if(!errorState.check(buffer != 0, "buffer is null ptr"))
 			return false;
 
-		if( !errorState.check(size > VBAN_HEADER_SIZE, "packet too small") )
+		if(!errorState.check(size > VBAN_HEADER_SIZE, "packet too small"))
 			return false;
 
-		if( !errorState.check(hdr->vban == *(int32_t*)("VBAN"), "invalid vban magic fourc"))
+		if(!errorState.check(hdr->vban == *(int32_t*)("VBAN"), "invalid vban magic fourc"))
 			return false;
 
-		if( !errorState.check((hdr->format_bit & VBAN_RESERVED_MASK) == 0, "reserved format bit invalid value") )
+		if(!errorState.check((hdr->format_bit & VBAN_RESERVED_MASK) == 0, "reserved format bit invalid value"))
 			return false;
 
 		// check protocol and codec
@@ -120,10 +132,10 @@ namespace nap
 			return false;
 		}else
 		{
-			if( !errorState.check(codec == VBAN_CODEC_PCM, "unsupported codec") )
+			if(!errorState.check(codec == VBAN_CODEC_PCM, "unsupported codec"))
 				return false;
 
-			if( !checkPcmPacket(errorState, buffer, size) )
+			if(!checkPcmPacket(errorState, buffer, size))
 				return false;
 		}
 
@@ -136,14 +148,12 @@ namespace nap
 		// the packet is already a valid vban packet and buffer already checked before
 		struct VBanHeader const* const hdr = (struct VBanHeader*)(buffer);
 		enum VBanBitResolution const bit_resolution = static_cast<const VBanBitResolution>(hdr->format_bit & VBAN_BIT_RESOLUTION_MASK);
-		int const sample_rate   = hdr->format_SR & VBAN_SR_MASK;
-		size_t sample_size      = 0;
-		size_t payload_size     = 0;
+		int const sample_rate_format   = hdr->format_SR & VBAN_SR_MASK;
 
-		if( !errorState.check(bit_resolution < VBAN_BIT_RESOLUTION_MAX, "invalid bit resolution") )
+		if(!errorState.check(bit_resolution < VBAN_BIT_RESOLUTION_MAX, "invalid bit resolution"))
 			return false;
 
-		if( !errorState.check(sample_rate < VBAN_SR_MAXNUMBER, "invalid sample rate") )
+		if(!errorState.check(sample_rate_format < VBAN_SR_MAXNUMBER, "invalid sample rate"))
 			return false;
 
 		return true;
