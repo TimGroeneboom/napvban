@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "samplequeueplayernode.h"
+#include "mathutils.h"
 
 #include <nap/logger.h>
 
@@ -44,21 +45,34 @@ namespace nap
 		{
             // get buffer size
             const int buffer_size = this->getBufferSize();
+            const int available_samples = mQueue.size_approx();
+            int buffer_size_to_copy = available_samples;
+            if(available_samples > buffer_size)
+                buffer_size_to_copy = buffer_size;
 
             // if the amount of samples in the queue exceeds buffer sized used by audio service we can fill the outputbuffer
-            if(mQueue.size_approx() >= buffer_size)
+            if(buffer_size_to_copy > 0)
             {
+                auto& outputBuffer = getOutputBuffer(audioOutput);
+
+                // if sample buffer is smaller
+                int silent_samples_num = buffer_size - available_samples;
+                silent_samples_num = math::max(silent_samples_num, 0);
+                if(silent_samples_num > 0)
+                {
+                    std::fill(outputBuffer.begin(), outputBuffer.begin() + silent_samples_num, 0.0f);
+                }
+
                 // dequeue the samples from the queue
-                std::vector<SampleValue> samples(buffer_size);
-                if(mQueue.try_dequeue_bulk(samples.begin(), buffer_size))
+                std::vector<SampleValue> samples(buffer_size_to_copy);
+                if(mQueue.try_dequeue_bulk(samples.begin(), buffer_size_to_copy))
                 {
                     // fill the output buffer
-                    auto& outputBuffer = getOutputBuffer(audioOutput);
-                    std::memcpy(outputBuffer.data(), samples.data(), buffer_size * sizeof(SampleValue));
+                    std::memcpy(&outputBuffer.data()[silent_samples_num], samples.data(), buffer_size_to_copy * sizeof(SampleValue));
                 }
             }else
             {
-                // not enough samples in queue, fill with silence
+                // no samples in queue, fill with silence
                 if(mVerbose)
                     nap::Logger::warn("%s: Not enough samples in queue", std::string(get_type().get_name()).c_str());
                 auto& outputBuffer = getOutputBuffer(audioOutput);
