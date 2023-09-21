@@ -21,6 +21,8 @@ namespace nap
 
 		SampleQueuePlayerNode::SampleQueuePlayerNode(NodeManager& manager) : Node(manager)
 		{
+            mBufferSize = getBufferSize();
+            mSamples = std::vector<SampleValue>(mBufferSize);
 		}
 
 
@@ -44,31 +46,30 @@ namespace nap
 		void SampleQueuePlayerNode::process()
 		{
             // get buffer size
-            const int buffer_size = this->getBufferSize();
             const int available_samples = mQueue.size_approx();
             int buffer_size_to_copy = available_samples;
-            if(available_samples > buffer_size)
-                buffer_size_to_copy = buffer_size;
+            if(available_samples > mBufferSize)
+                buffer_size_to_copy = mBufferSize;
 
             // if the amount of samples in the queue exceeds buffer sized used by audio service we can fill the outputbuffer
             if(buffer_size_to_copy > 0)
             {
+                // get output buffer
                 auto& outputBuffer = getOutputBuffer(audioOutput);
 
-                // if sample buffer is smaller
-                int silent_samples_num = buffer_size - available_samples;
+                // if sample buffer is smaller the buffersize fill beginning with silence
+                int silent_samples_num = mBufferSize - available_samples;
                 silent_samples_num = math::max(silent_samples_num, 0);
                 if(silent_samples_num > 0)
                 {
                     std::fill(outputBuffer.begin(), outputBuffer.begin() + silent_samples_num, 0.0f);
                 }
 
-                // dequeue the samples from the queue
-                std::vector<SampleValue> samples(buffer_size_to_copy);
-                if(mQueue.try_dequeue_bulk(samples.begin(), buffer_size_to_copy))
+                // dequeue the samples from the queue and fill the rest with the outputbuffer
+                if(mQueue.try_dequeue_bulk(mSamples.begin(), buffer_size_to_copy))
                 {
                     // fill the output buffer
-                    std::memcpy(&outputBuffer.data()[silent_samples_num], samples.data(), buffer_size_to_copy * sizeof(SampleValue));
+                    std::memcpy(&outputBuffer.data()[silent_samples_num], mSamples.data(), buffer_size_to_copy * sizeof(SampleValue));
                 }
             }else
             {
