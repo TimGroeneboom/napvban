@@ -62,6 +62,7 @@ namespace nap
                     char byte_1 = value;
                     char byte_2 = value >> 8;
 
+                    // copy sample bytes to packet
                     mPacketChannelOffsets[channel][mPacketWritePosition] = byte_1;
                     mPacketChannelOffsets[channel][mPacketWritePosition + 1] = byte_2;
                 }
@@ -69,6 +70,7 @@ namespace nap
 
                 if (mPacketWritePosition == mPacketChannelSize)
                 {
+                    // set the frame counter in the VBAN header
                     mPacketHeader->nuFrame = mFrameCounter;
 
                     // create udp packet & send
@@ -128,6 +130,7 @@ namespace nap
                 mPacketHeader->nuFrame    = mFrameCounter;
                 mPacketHeader->format_nbs = (totalBufferSize / ((mPacketHeader->format_nbc + 1) * VBanBitResolutionSize[(mPacketHeader->format_bit & VBAN_BIT_RESOLUTION_MASK)])) - 1;
 
+                // administer offsets of each channel in the VBAN packet
                 mPacketChannelOffsets.resize(mChannelCount);
                 for (auto channel = 0; channel < mChannelCount; ++channel)
                     mPacketChannelOffsets[channel] = &mPacketBuffer[VBAN_HEADER_SIZE + channel * mPacketChannelSize];
