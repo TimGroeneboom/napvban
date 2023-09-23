@@ -103,6 +103,13 @@ namespace nap
 
         void VBANSenderNode::setChannelCount(int channelCount)
         {
+            // sanity check the amount of channels
+            if(channelCount > 254)
+            {
+                nap::Logger::warn("Channel count %i not allowed, clamping to 254", channelCount);
+                mChannelCount = 254;
+            }
+
             if (mChannelCount != channelCount)
             {
                 mChannelCount = channelCount;
