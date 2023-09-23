@@ -81,9 +81,7 @@ namespace nap
             if (mStreamName.empty())
                 return;
 
-            if (mSampleRateFormat < 0)
-                return;
-
+            assert(mSampleRateFormat >= 0);
             assert(channel < mBuffers.size()); // channel should always be in range
 
             int buffer_size_for_each_channel = VBAN_SAMPLES_MAX_NB / getChannelCount(); // buffer size for each channel

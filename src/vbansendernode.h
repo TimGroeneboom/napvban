@@ -52,7 +52,6 @@ namespace nap
             void sampleRateChanged(float) override;
 
             std::vector<std::vector<audio::SampleValue>*> mInputPullResult;
-            std::vector<char> mBuffer;
             std::vector<std::vector<char>> mBuffers;
             uint32_t mFrameCount = 0;
             uint8_t mSampleRateFormat = 0;
