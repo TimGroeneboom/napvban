@@ -130,7 +130,7 @@ namespace nap
                 // initialize VBAN header
                 mPacketHeader = (struct VBanHeader*)(&mPacketBuffer[0]);
                 mPacketHeader->vban       = *(int32_t*)("VBAN");
-                mPacketHeader->format_nbc = getChannelCount() - 1;
+                mPacketHeader->format_nbc = mChannelCount - 1;
                 mPacketHeader->format_SR  = mSampleRateFormat;
                 mPacketHeader->format_bit = VBAN_BITFMT_16_INT;
                 strncpy(mPacketHeader->streamname, mStreamName.c_str(), VBAN_STREAM_NAME_SIZE - 1);
