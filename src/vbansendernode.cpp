@@ -84,11 +84,17 @@ namespace nap
             assert(mSampleRateFormat >= 0);
             assert(channel < mBuffers.size()); // channel should always be in range
 
-            int buffer_size_for_each_channel = VBAN_SAMPLES_MAX_NB / getChannelCount(); // buffer size for each channel
-            for(float sampleValue : buffer)
+            // buffer size for each channel
+            int buffer_size_for_each_channel = VBAN_SAMPLES_MAX_NB;
+
+            // if total buffersize exceeds max data size, resize buffersize to fit max data size
+            if(buffer_size_for_each_channel * mBuffers.size() > VBAN_DATA_MAX_SIZE)
+                buffer_size_for_each_channel = VBAN_DATA_MAX_SIZE / mBuffers.size();
+
+            for(float sample_value : buffer)
             {
                 // convert float to short
-                short value = static_cast<short>(sampleValue * 32768.0f);
+                short value = static_cast<short>(sample_value * 32768.0f);
 
                 // convert short to two bytes
                 char byte_1 = value;
@@ -153,7 +159,5 @@ namespace nap
                 }
             }
         }
-
-
 	}
 }
