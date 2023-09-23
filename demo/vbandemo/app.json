@@ -1,0 +1,15 @@
+{
+    "Type": "nap::ProjectInfo",
+    "mID": "ProjectInfo",
+    "Title": "vbandemo",
+    "Version": "0.1.0",
+    "RequiredModules": [
+        "napapp",
+        "napcameracontrol",
+        "napparametergui",
+        "napvbandemo"
+    ],
+    "Data": "data/objects.json",
+    "ServiceConfig": "",
+    "PathMapping": "cache/path_mapping.json"
+}
