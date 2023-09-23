@@ -110,6 +110,9 @@ namespace nap
 		if(!errorState.check((hdr->format_bit & VBAN_RESERVED_MASK) == 0, "reserved format bit invalid value"))
 			return false;
 
+        if(!errorState.check((hdr->format_nbc + 1) > 0, "channel count cannot be 0 or smaller"))
+            return false;
+
 		// check protocol and codec
 		protocol        = static_cast<VBanProtocol>(hdr->format_SR & VBAN_PROTOCOL_MASK);
 		codec           = static_cast<VBanCodec>(hdr->format_bit & VBAN_CODEC_MASK);

@@ -112,7 +112,7 @@ namespace nap
 
                 // if total buffersize exceeds max data size, resize packet channel size to fit max data size
                 if (mPacketChannelSize * mChannelCount > VBAN_DATA_MAX_SIZE)
-                    mPacketChannelSize = VBAN_DATA_MAX_SIZE / mChannelCount;
+                    mPacketChannelSize = (VBAN_DATA_MAX_SIZE / (mChannelCount * 2)) * 2;
 
                 // compute the buffer size of all channels together
                 int totalBufferSize = mPacketChannelSize * mChannelCount;
@@ -136,7 +136,5 @@ namespace nap
                     mPacketChannelOffsets[channel] = &mPacketBuffer[VBAN_HEADER_SIZE + channel * mPacketChannelSize];
             }
         }
-
-
 	}
 }
