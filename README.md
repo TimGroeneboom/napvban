@@ -6,4 +6,6 @@ The demo demonstrates sending and receiving audio over localhost. You can use th
 
 The main purpose is to have the lowest possible latency. To allow more latency you can increase the allowed latency in samples on the VBANStreamPlayerComponent.
 
+Audio is converted into 16 BIT PCM Wave format internally. SampleRate and channels can vary depending on settings.
+
 The VBAN protocol specification can be found [here](VBANProtocol_Specifications.pdf)
