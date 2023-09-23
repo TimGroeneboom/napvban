@@ -7,6 +7,8 @@
 // Std includes
 #include <atomic>
 
+#include <vban/vban.h>
+
 #include <udpclient.h>
 
 // Audio includes
@@ -44,7 +46,7 @@ namespace nap
 
 		private:
             void setChannelCount(int channelCount);
-            int getChannelCount() const { return mBuffers.size(); }
+            int getChannelCount() const { return mChannelCount; }
             void processBuffer(const SampleBuffer& buffer, int channel);
 
             // Inherited from Node
@@ -52,7 +54,13 @@ namespace nap
             void sampleRateChanged(float) override;
 
             std::vector<std::vector<audio::SampleValue>*> mInputPullResult;
-            std::vector<std::vector<char>> mBuffers;
+            int mChannelCount = 0;
+            int mBufferSizePerChannel = 0;
+            int mBufferWritePosition = 0;
+            std::vector<nap::uint8> mBuffer;
+            std::vector<nap::uint8*> mBufferChannelOffsets;
+            VBanHeader* mVBANHeader = nullptr;
+
             uint32_t mFrameCount = 0;
             uint8_t mSampleRateFormat = 0;
             std::string mStreamName;

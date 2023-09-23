@@ -37,16 +37,51 @@ namespace nap
 
 		void VBANSenderNode::process()
 		{
+            if (mUDPClient == nullptr)
+                return;
+
+            if (mStreamName.empty())
+                return;
+
+            assert(mSampleRateFormat >= 0);
+
 			// get output buffers
 			inputs.pull(mInputPullResult);
             setChannelCount(mInputPullResult.size());
 
-            int channel = 0;
-            for (auto& buffer : mInputPullResult)
+            for (auto i = 0; i < getBufferSize(); ++i)
             {
-                processBuffer(*buffer, channel);
-                channel++;
-			}
+                for (auto channel = 0; channel < mChannelCount; ++channel)
+                {
+                    float sample = (*mInputPullResult[channel])[i];
+
+                    // convert float to short
+                    short value = static_cast<short>(sample * 32768.0f);
+
+                    // convert short to two bytes
+                    char byte_1 = value;
+                    char byte_2 = value >> 8;
+
+                    mBufferChannelOffsets[channel][mBufferWritePosition] = byte_1;
+                    mBufferChannelOffsets[channel][mBufferWritePosition + 1] = byte_2;
+                }
+                mBufferWritePosition = mBufferWritePosition + 2;
+
+                if (mBufferWritePosition == mBufferSizePerChannel)
+                {
+                    mVBANHeader->nuFrame = mFrameCount;
+
+                    // create udp packet & send
+                    UDPPacket packet(mBuffer);
+                    mUDPClient->send(packet);
+
+                    // reset udp buffer write position
+                    mBufferWritePosition = 0;
+
+                    // advance framecount
+                    mFrameCount++;
+                }
+            }
 		}
 
 
@@ -66,98 +101,38 @@ namespace nap
 
         void VBANSenderNode::setChannelCount(int channelCount)
         {
-            if (mBuffers.size() != channelCount)
+            if (mChannelCount != channelCount)
             {
-                mBuffers.resize(channelCount);
+                mChannelCount = channelCount;
+                // buffer size for each channel
+                mBufferSizePerChannel = VBAN_SAMPLES_MAX_NB;
+
+                // if total buffersize exceeds max data size, resize buffersize to fit max data size
+                if (mBufferSizePerChannel * mChannelCount > VBAN_DATA_MAX_SIZE)
+                    mBufferSizePerChannel = VBAN_DATA_MAX_SIZE / mChannelCount;
+
+                // compute the buffer size of all channels together
+                int totalBufferSize = mBufferSizePerChannel * mChannelCount;
+
+                // resize it to have the correct size
+                mBuffer.resize(VBAN_HEADER_SIZE + totalBufferSize);
+
+                // init header
+                mVBANHeader = (struct VBanHeader*)(&mBuffer[0]);
+                mVBANHeader->vban       = *(int32_t*)("VBAN");
+                mVBANHeader->format_nbc = getChannelCount() - 1;
+                mVBANHeader->format_SR  = mSampleRateFormat;
+                mVBANHeader->format_bit = VBAN_BITFMT_16_INT;
+                strncpy(mVBANHeader->streamname, mStreamName.c_str(), VBAN_STREAM_NAME_SIZE-1);
+                mVBANHeader->nuFrame    = mFrameCount;
+                mVBANHeader->format_nbs = (totalBufferSize / ((mVBANHeader->format_nbc+1) * VBanBitResolutionSize[(mVBANHeader->format_bit & VBAN_BIT_RESOLUTION_MASK)])) - 1;
+
+                mBufferChannelOffsets.resize(mChannelCount);
+                for (auto channel = 0; channel < mChannelCount; ++channel)
+                    mBufferChannelOffsets[channel] = &mBuffer[VBAN_HEADER_SIZE + channel * mBufferSizePerChannel];
             }
         }
 
 
-        void VBANSenderNode::processBuffer(const SampleBuffer& buffer, int channel)
-        {
-            if (mUDPClient == nullptr)
-                return;
-
-            if (mStreamName.empty())
-                return;
-
-            assert(mSampleRateFormat >= 0);
-            assert(channel < mBuffers.size()); // channel should always be in range
-
-            // buffer size for each channel
-            int buffer_size_for_each_channel = VBAN_SAMPLES_MAX_NB;
-
-            // if total buffersize exceeds max data size, resize buffersize to fit max data size
-            if(buffer_size_for_each_channel * mBuffers.size() > VBAN_DATA_MAX_SIZE)
-                buffer_size_for_each_channel = VBAN_DATA_MAX_SIZE / mBuffers.size();
-
-            for(float sample_value : buffer)
-            {
-                // convert float to short
-                short value = static_cast<short>(sample_value * 32768.0f);
-
-                // convert short to two bytes
-                char byte_1 = value;
-                char byte_2 = value >> 8;
-
-                // put them in the correct buffer
-                mBuffers[channel].emplace_back(byte_1);
-                mBuffers[channel].emplace_back(byte_2);
-            }
-
-            // on push of last channel, create the packet
-            if(channel == getChannelCount() - 1)
-            {
-                // compute the amount of buffers we need to send
-                int buffer_num = mBuffers[channel].size() / buffer_size_for_each_channel;
-
-                // compute the payload size
-                int payload_size = buffer_size_for_each_channel * getChannelCount();
-
-                // continue creating the necessary packets
-                for(int i = 0 ; i < buffer_num; i++)
-                {
-                    // create the buffer
-                    std::vector<nap::uint8> buffer;
-
-                    // resize it to have the correct size
-                    buffer.resize(VBAN_HEADER_SIZE + payload_size);
-
-                    // init header
-                    auto* const hdr = (struct VBanHeader*)(&buffer[0]);
-                    hdr->vban       = *(int32_t*)("VBAN");
-                    hdr->format_nbc = getChannelCount() - 1;
-                    hdr->format_SR  = mSampleRateFormat;
-                    hdr->format_bit = VBAN_BITFMT_16_INT;
-                    strncpy(hdr->streamname, mStreamName.c_str(), VBAN_STREAM_NAME_SIZE-1);
-                    hdr->nuFrame    = mFrameCount;
-                    hdr->format_nbs = (payload_size / ((hdr->format_nbc+1) * VBanBitResolutionSize[(hdr->format_bit & VBAN_BIT_RESOLUTION_MASK)])) - 1;
-
-                    // copy bytes for each channel
-                    for (int c = 0 ; c <getChannelCount(); c++)
-                    {
-                        std::memcpy(&buffer[VBAN_HEADER_SIZE + c * buffer_size_for_each_channel],
-                                    &mBuffers[c][i * buffer_size_for_each_channel],
-                                    buffer_size_for_each_channel);
-                    }
-
-                    // create udp packet & send
-                    UDPPacket packet(std::move(buffer));
-                    mUDPClient->send(packet);
-
-                    // advance framecount
-                    mFrameCount++;
-                }
-
-                // see if we have buffers to clear
-                if (buffer_num > 0)
-                {
-                    for(int j = 0 ; j < getChannelCount(); j++)
-                    {
-                        mBuffers[j].erase(mBuffers[j].begin(), mBuffers[j].begin() + buffer_num * buffer_size_for_each_channel);
-                    }
-                }
-            }
-        }
 	}
 }
