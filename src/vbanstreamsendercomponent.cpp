@@ -29,48 +29,47 @@ namespace nap
 
 	void VBANStreamSenderComponentInstance::onDestroy()
 	{
-        mDynamicProcessorNode->setUDPClient(nullptr);
+        mVBANSenderNode->setUDPClient(nullptr);
 	}
 
 
 	bool VBANStreamSenderComponentInstance::init(utility::ErrorState& errorState)
 	{
         // acquire audio service and node manager
-        mAudioService = getEntityInstance()->getCore()->getService<AudioService>();
-        auto& nodeManager = mAudioService->getNodeManager();
+        auto audioService = getEntityInstance()->getCore()->getService<AudioService>();
+        auto& nodeManager = audioService->getNodeManager();
 
         // acquire resources
 		auto* resource = getComponent<VBANStreamSenderComponent>();
-		mResource = resource;
-		mChannelRouting = resource->mChannelRouting;
+		auto& channelRouting = resource->mChannelRouting;
 
         // configure channel routing
-		if (mChannelRouting.empty())
+		if (channelRouting.empty())
 		{
 			for (auto channel = 0; channel < mInput->getChannelCount(); ++channel)
-				mChannelRouting.emplace_back(channel);
+                channelRouting.emplace_back(channel);
 		}
-		for (auto channel = 0; channel < mChannelRouting.size(); ++channel)
+		for (auto channel = 0; channel < channelRouting.size(); ++channel)
         {
-            if (mChannelRouting[channel] >= mInput->getChannelCount())
+            if (channelRouting[channel] >= mInput->getChannelCount())
             {
                 errorState.fail("%s: Trying to route input channel that is out of bounds.", resource->mID.c_str());
                 return false;
             }
         }
 
-        // Create the dynamic processor node
-        mDynamicProcessorNode = nodeManager.makeSafe<VBANSenderNode>(nodeManager);
-        mDynamicProcessorNode->setStreamName(mResource->mStreamName);
-        mDynamicProcessorNode->setUDPClient(mResource->mUdpClient.get());
+        // Create the VBAN sender node
+        mVBANSenderNode = nodeManager.makeSafe<VBANSenderNode>(nodeManager);
+        mVBANSenderNode->setStreamName(resource->mStreamName);
+        mVBANSenderNode->setUDPClient(resource->mUdpClient.get());
 
-        // Connect outputs to dynamic processor node
-		for (auto channel = 0; channel < mChannelRouting.size(); ++channel)
+        // Connect outputs to VBAN sender node
+		for (auto channel = 0; channel < channelRouting.size(); ++channel)
 		{
-			if (mChannelRouting[channel] < 0)
+			if (channelRouting[channel] < 0)
 				continue;
 
-			mDynamicProcessorNode->inputs.connect(*mInput->getOutputForChannel(mChannelRouting[channel]));
+			mVBANSenderNode->inputs.connect(*mInput->getOutputForChannel(channelRouting[channel]));
 		}
 
 		return true;

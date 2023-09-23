@@ -87,11 +87,7 @@ namespace nap
 
 		private:
 			ComponentInstancePtr<audio::AudioComponentBase> mInput	= {this, &VBANStreamSenderComponent::mInput};
-			audio::SafeOwner<audio::VBANSenderNode> mDynamicProcessorNode = nullptr;
-
-			VBANStreamSenderComponent* mResource = nullptr;
-			audio::AudioService* mAudioService	 = nullptr;
-			std::vector<int> mChannelRouting;
+			audio::SafeOwner<audio::VBANSenderNode> mVBANSenderNode = nullptr;
 		};
 	}
 }
