@@ -1,0 +1,157 @@
+{
+    "Objects": [
+        {
+            "Type": "nap::Entity",
+            "mID": "VBANReceiverEntity",
+            "Components": [
+                {
+                    "Type": "nap::audio::VBANStreamPlayerComponent",
+                    "mID": "VBANStreamPlayerComponent",
+                    "VBANPacketReceiver": "VBANPacketReceiver",
+                    "ChannelRouting": [
+                        0,
+                        1
+                    ],
+                    "MaxBufferSize": 4096,
+                    "StreamName": "vbandemo"
+                },
+                {
+                    "Type": "nap::audio::OutputComponent",
+                    "mID": "AudioOutputComponent",
+                    "Input": "./VBANStreamPlayerComponent",
+                    "Routing": [
+                        0,
+                        1
+                    ]
+                },
+                {
+                    "Type": "nap::audio::LevelMeterComponent",
+                    "mID": "ReceiverLevelMeter",
+                    "Input": "./VBANStreamPlayerComponent",
+                    "AnalysisWindowSize": 10.0,
+                    "MeterType": "RMS",
+                    "FilterInput": false,
+                    "CenterFrequency": 400.0,
+                    "BandWidth": 100.0,
+                    "Channel": 0
+                }
+            ],
+            "Children": []
+        },
+        {
+            "Type": "nap::Entity",
+            "mID": "VBANSenderEntity",
+            "Components": [
+                {
+                    "Type": "nap::audio::VBANStreamSenderComponent",
+                    "mID": "VBANStreamSenderComponent",
+                    "UdpClient": "UDPClient",
+                    "Input": "./PlaybackComponent",
+                    "StreamName": "vbandemo"
+                },
+                {
+                    "Type": "nap::audio::PlaybackComponent",
+                    "mID": "PlaybackComponent",
+                    "Buffer": "AudioFile",
+                    "ChannelRouting": [
+                        0,
+                        1
+                    ],
+                    "Gain": 1.0,
+                    "StereoPanning": 0.5,
+                    "AutoPlay": true,
+                    "StartPosition": 0.0,
+                    "Duration": 0.0,
+                    "FadeInTime": 0.0,
+                    "FadeOutTime": 0.0,
+                    "Pitch": 1.0
+                },
+                {
+                    "Type": "nap::audio::LevelMeterComponent",
+                    "mID": "SenderLevelMeter",
+                    "Input": "./PlaybackComponent",
+                    "AnalysisWindowSize": 10.0,
+                    "MeterType": "RMS",
+                    "FilterInput": false,
+                    "CenterFrequency": 400.0,
+                    "BandWidth": 100.0,
+                    "Channel": 0
+                }
+            ],
+            "Children": []
+        },
+        {
+            "Type": "nap::RenderWindow",
+            "mID": "Window",
+            "Borderless": false,
+            "Resizable": true,
+            "Visible": true,
+            "SampleShading": true,
+            "Title": "vbandemo",
+            "Width": 1280,
+            "Height": 720,
+            "Mode": "Immediate",
+            "ClearColor": {
+                "Values": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            },
+            "Samples": "Four",
+            "AdditionalSwapImages": 1,
+            "RestoreSize": true,
+            "RestorePosition": true
+        },
+        {
+            "Type": "nap::Scene",
+            "mID": "Scene",
+            "Entities": [
+                {
+                    "Entity": "VBANSenderEntity",
+                    "InstanceProperties": []
+                },
+                {
+                    "Entity": "VBANReceiverEntity",
+                    "InstanceProperties": []
+                }
+            ]
+        },
+        {
+            "Type": "nap::UDPClient",
+            "mID": "UDPClient",
+            "Thread": "UDPThread",
+            "AllowFailure": false,
+            "Endpoint": "127.0.0.1",
+            "Broadcast": false,
+            "Port": 13251,
+            "MaxQueueSize": 1000,
+            "StopOnMaxQueueSizeExceeded": true
+        },
+        {
+            "Type": "nap::UDPServer",
+            "mID": "UDPServer",
+            "Thread": "UDPThread",
+            "AllowFailure": false,
+            "Port": 13251,
+            "IP Address": "",
+            "Multicast Groups": []
+        },
+        {
+            "Type": "nap::UDPThread",
+            "mID": "UDPThread",
+            "Update Method": "Spawn Own Thread"
+        },
+        {
+            "Type": "nap::VBANPacketReceiver",
+            "mID": "VBANPacketReceiver",
+            "Server": "UDPServer"
+        },
+        {
+            "Type": "nap::audio::AudioFileResource",
+            "mID": "AudioFile",
+            "AudioFilePath": "hang.mp3"
+        }
+    ]
+}

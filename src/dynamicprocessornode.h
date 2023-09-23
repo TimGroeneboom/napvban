@@ -65,7 +65,6 @@ namespace nap
 			void removeProcessor(IProcessor* processor);
 
 		private:
-			std::vector<char> mBuffer;
 			std::vector<IProcessor*> mProcessors;
             std::vector<std::vector<audio::SampleValue>*> mInputPullResult;
 		};
