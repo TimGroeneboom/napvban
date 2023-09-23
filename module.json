@@ -1,6 +1,6 @@
 {
     "Type": "nap::ModuleInfo", 
-    "mID": "ModuleInfo", 
+    "mID": "vban",
     "DemoApp" : "vbandemo",
     "RequiredModules": [
         "napudp",
