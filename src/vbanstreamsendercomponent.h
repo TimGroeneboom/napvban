@@ -5,7 +5,7 @@
 #pragma once
 
 #include "udpclient.h"
-#include "dynamicprocessornode.h"
+#include "vbansendernode.h"
 
 // Nap includes
 #include <nap/resourceptr.h>
@@ -45,7 +45,7 @@ namespace nap
          * VBANStreamSenderComponentInstance
          * The instance of the VBANStreamSenderComponent, implements the DynamicProcessorNode::IProcessor interface
          */
-		class NAPAPI VBANStreamSenderComponentInstance : public AudioComponentBaseInstance, public DynamicProcessorNode::IProcessor
+		class NAPAPI VBANStreamSenderComponentInstance : public AudioComponentBaseInstance
 		{
 			RTTI_ENABLE(AudioComponentBaseInstance)
 		public:
@@ -73,13 +73,6 @@ namespace nap
             void onDestroy() override;
 
             /**
-             * Processes the buffer for designated channel. Converts the buffer into vban packets
-             * @param buffer the buffer
-             * @param channel the channel
-             */
-            void processBuffer(const std::vector<float>& buffer, int channel) override;
-
-            /**
              * Returns amount of channels
              * @return amount of channels
              */
@@ -92,30 +85,13 @@ namespace nap
              */
 			OutputPin* getOutputForChannel(int channel) override { return mInput->getOutputForChannel(channel); }
 
-            /**
-             * Sets streamname this VBANStreamSender accepts
-             * @param streamName this VBANStreamSender accepts
-             */
-            void setStreamName(const std::string& streamName){ mStreamName = streamName; }
-
-            /**
-             * Returns streamname this VBANStreamPlayer accepts
-             * @return streamname this VBANStreamPlayer accepts
-             */
-            const std::string& getStreamName() { return mStreamName; }
 		private:
 			ComponentInstancePtr<audio::AudioComponentBase> mInput	= {this, &VBANStreamSenderComponent::mInput};
-			audio::SafeOwner<audio::DynamicProcessorNode> mDynamicProcessorNode = nullptr;
+			audio::SafeOwner<audio::VBANSenderNode> mDynamicProcessorNode = nullptr;
 
 			VBANStreamSenderComponent* mResource = nullptr;
 			audio::AudioService* mAudioService	 = nullptr;
-			UDPClient* mUdpClient				 = nullptr;
 			std::vector<int> mChannelRouting;
-			std::vector<audio::SafeOwner<audio::Node>> mOutputs;
-			std::string mStreamName;
-			uint32_t mFrameCount = 0;
-            std::vector<std::vector<char>> mBuffers;
-            uint8_t mSampleRateFormat = 0;
 		};
 	}
 }

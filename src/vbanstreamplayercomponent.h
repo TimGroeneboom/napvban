@@ -124,6 +124,7 @@ namespace nap
              * @return sample rate used by listener
              */
             int getSampleRate() const override{ return mSampleRate; }
+
 		private:
 			std::vector<SafeOwner<SampleQueuePlayerNode>> mBufferPlayers;
 			std::vector<int> mChannelRouting;

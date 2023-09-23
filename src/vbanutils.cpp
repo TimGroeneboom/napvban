@@ -6,7 +6,7 @@ namespace nap
     {
         for(int i = 0; i < VBAN_SR_MAXNUMBER; i++)
         {
-            if(sampleRate==VBanSRList[i])
+            if (sampleRate==VBanSRList[i])
             {
                 srFormat = i;
                 return true;
