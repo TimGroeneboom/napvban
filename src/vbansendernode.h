@@ -55,13 +55,13 @@ namespace nap
 
             std::vector<std::vector<audio::SampleValue>*> mInputPullResult;
             int mChannelCount = 0;
-            int mBufferSizePerChannel = 0;
-            int mBufferWritePosition = 0;
-            std::vector<nap::uint8> mBuffer;
-            std::vector<nap::uint8*> mBufferChannelOffsets;
-            VBanHeader* mVBANHeader = nullptr;
+            int mPacketChannelSize = 0;
+            int mPacketWritePosition = 0;
+            std::vector<nap::uint8> mPacketBuffer;
+            std::vector<nap::uint8*> mPacketChannelOffsets;
+            VBanHeader* mPacketHeader = nullptr;
 
-            uint32_t mFrameCount = 0;
+            uint32_t mFrameCounter = 0;
             uint8_t mSampleRateFormat = 0;
             std::string mStreamName;
             UDPClient* mUDPClient = nullptr;
