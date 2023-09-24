@@ -34,7 +34,6 @@ namespace nap
 		if (checkPacket(errorState, &packet.data()[0], packet.size()) )
 		{
 			struct VBanHeader const* const hdr = (struct VBanHeader*)(&packet.data()[0]);
-			uint8_t channels 			= hdr->format_nbc + 1;
 
             // get packet meta-data
 			int const nb_samples    = hdr->format_nbs + 1;
@@ -44,8 +43,8 @@ namespace nap
 
 			// create buffers to push to players
 			std::vector<std::vector<float>> buffers;
-			int float_buffer_size = ( payload_size / sample_size ) / channels;
-			for (int i = 0; i < channels; i++)
+			int float_buffer_size = ( payload_size / sample_size ) / nb_channels;
+			for (int i = 0; i < nb_channels; i++)
 			{
 				std::vector<float> new_buffer;
 				new_buffer.resize(float_buffer_size);
@@ -53,7 +52,7 @@ namespace nap
 			}
 
 			// convert WAVE PCM multiplexed signal into floating point (SampleValue) buffers for each channel
-            for(int c = 0; c < channels; c++)
+            for(int c = 0; c < nb_channels; c++)
             {
                 for (size_t i = 0; i < float_buffer_size; i++)
                 {
@@ -107,7 +106,7 @@ namespace nap
 		if(!errorState.check(hdr->vban == *(int32_t*)("VBAN"), "invalid vban magic fourc"))
 			return false;
 
-		if(!errorState.check((hdr->format_bit & VBAN_RESERVED_MASK) == 0, "reserved format bit invalid value"))
+		if(!errorState.check(hdr->format_bit == VBAN_BITFMT_16_INT, "reserved format bit invalid value, only 16 bit PCM supported at this time"))
 			return false;
 
         if(!errorState.check((hdr->format_nbc + 1) > 0, "channel count cannot be 0 or smaller"))
