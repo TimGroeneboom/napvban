@@ -31,34 +31,33 @@ namespace nap
         mTaskQueue.process();
 
 		utility::ErrorState errorState;
-		if (checkPacket(errorState, &packet.data()[0], packet.size()) )
-		{
-			struct VBanHeader const* const hdr = (struct VBanHeader*)(&packet.data()[0]);
+		if (checkPacket(errorState, &packet.data()[0], packet.size()) ) {
+            struct VBanHeader const *const hdr = (struct VBanHeader *) (&packet.data()[0]);
 
             // get packet meta-data
-			int const nb_samples    = hdr->format_nbs + 1;
-			int const nb_channels   = hdr->format_nbc + 1;
-			size_t sample_size = VBanBitResolutionSize[static_cast<const VBanBitResolution>(hdr->format_bit & VBAN_BIT_RESOLUTION_MASK)];
-			size_t payload_size = nb_samples * sample_size * nb_channels;
+            int const nb_samples = hdr->format_nbs + 1;
+            int const nb_channels = hdr->format_nbc + 1;
+            size_t sample_size = VBanBitResolutionSize[static_cast<const VBanBitResolution>(hdr->format_bit &
+                                                                                            VBAN_BIT_RESOLUTION_MASK)];
+            size_t payload_size = nb_samples * sample_size * nb_channels;
 
-			// create buffers to push to players
-			std::vector<std::vector<float>> buffers;
-			int float_buffer_size = ( payload_size / sample_size ) / nb_channels;
-			for (int i = 0; i < nb_channels; i++)
-			{
-				std::vector<float> new_buffer;
-				new_buffer.resize(float_buffer_size);
-				buffers.emplace_back(new_buffer);
-			}
+            // create buffers to push to players
+            std::vector<std::vector<float>> buffers;
+            int float_buffer_size = (payload_size / sample_size) / nb_channels;
+            for (int i = 0; i < nb_channels; i++) {
+                std::vector<float> new_buffer;
+                new_buffer.resize(float_buffer_size);
+                buffers.emplace_back(new_buffer);
+            }
 
-			// convert WAVE PCM multiplexed signal into floating point (SampleValue) buffers for each channel
-            for(int c = 0; c < nb_channels; c++)
+            // convert WAVE PCM multiplexed signal into floating point (SampleValue) buffers for each channel
+            for (size_t i = 0; i < float_buffer_size; i++)
             {
-                for (size_t i = 0; i < float_buffer_size; i++)
+                for (int c = 0; c < nb_channels; c++)
                 {
-                    int p = c * float_buffer_size * sample_size + VBAN_HEADER_SIZE + i * sample_size;
-                    char byte_1 = packet.data()[p];
-                    char byte_2 = packet.data()[p + 1];
+                    size_t pos = (i * nb_channels * 2) + (c * 2) + VBAN_HEADER_SIZE;
+                    char byte_1 = packet.data()[pos];
+                    char byte_2 = packet.data()[pos + 1];
                     short original_value = ((static_cast<short>(byte_2)) << 8) | (0x00ff & byte_1);
 
                     buffers[c][i] = ((float) original_value) / (float) 32768;

@@ -65,7 +65,7 @@ namespace nap
 		}
 
 
-		void VBANStreamPlayerComponentInstance::pushBuffers(std::vector<std::vector<float>>& buffers)
+		void VBANStreamPlayerComponentInstance::pushBuffers(const std::vector<std::vector<float>>& buffers)
 		{
 			if(buffers.size() >= getChannelCount())
 			{

@@ -63,12 +63,13 @@ namespace nap
                     char byte_2 = value >> 8;
 
                     // copy sample bytes to packet
-                    mPacketChannelOffsets[channel][mPacketWritePosition] = byte_1;
-                    mPacketChannelOffsets[channel][mPacketWritePosition + 1] = byte_2;
+                    mPacketBuffer[mPacketWritePosition] = byte_1;
+                    mPacketBuffer[mPacketWritePosition + 1] = byte_2;
+                    mPacketWritePosition += 2;
                 }
-                mPacketWritePosition = mPacketWritePosition + 2;
 
-                if (mPacketWritePosition == mPacketChannelSize)
+                assert(mPacketWritePosition <= mPacketSize);
+                if (mPacketWritePosition == mPacketSize)
                 {
                     // set the frame counter in the VBAN header
                     mPacketHeader->nuFrame = mFrameCounter;
@@ -78,7 +79,7 @@ namespace nap
                     mUDPClient->send(packet);
 
                     // reset udp buffer write position
-                    mPacketWritePosition = 0;
+                    mPacketWritePosition = VBAN_HEADER_SIZE;
 
                     // advance framecount
                     mFrameCounter++;
@@ -115,17 +116,23 @@ namespace nap
                 mChannelCount = channelCount;
 
                 // buffer size for each channel
-                mPacketChannelSize = VBAN_SAMPLES_MAX_NB;
+                mPacketChannelSize = VBAN_SAMPLES_MAX_NB * 2;
 
                 // if total buffersize exceeds max data size, resize packet channel size to fit max data size
                 if (mPacketChannelSize * mChannelCount > VBAN_DATA_MAX_SIZE)
                     mPacketChannelSize = (VBAN_DATA_MAX_SIZE / (mChannelCount * 2)) * 2;
 
                 // compute the buffer size of all channels together
-                int totalBufferSize = mPacketChannelSize * mChannelCount;
+                int total_buffer_size = mPacketChannelSize * mChannelCount;
 
                 // resize the packet data to have the correct size
-                mPacketBuffer.resize(VBAN_HEADER_SIZE + totalBufferSize);
+                mPacketBuffer.resize(VBAN_HEADER_SIZE + total_buffer_size);
+
+                // set write position
+                mPacketWritePosition = VBAN_HEADER_SIZE;
+
+                // set packet size
+                mPacketSize = mPacketChannelSize * mChannelCount + VBAN_HEADER_SIZE;
 
                 // initialize VBAN header
                 mPacketHeader = (struct VBanHeader*)(&mPacketBuffer[0]);
@@ -135,12 +142,7 @@ namespace nap
                 mPacketHeader->format_bit = VBAN_BITFMT_16_INT;
                 strncpy(mPacketHeader->streamname, mStreamName.c_str(), VBAN_STREAM_NAME_SIZE - 1);
                 mPacketHeader->nuFrame    = mFrameCounter;
-                mPacketHeader->format_nbs = (totalBufferSize / ((mPacketHeader->format_nbc + 1) * VBanBitResolutionSize[(mPacketHeader->format_bit & VBAN_BIT_RESOLUTION_MASK)])) - 1;
-
-                // administer offsets of each channel in the VBAN packet
-                mPacketChannelOffsets.resize(mChannelCount);
-                for (auto channel = 0; channel < mChannelCount; ++channel)
-                    mPacketChannelOffsets[channel] = &mPacketBuffer[VBAN_HEADER_SIZE + channel * mPacketChannelSize];
+                mPacketHeader->format_nbs = (mPacketChannelSize / 2) - 1;
             }
         }
 	}

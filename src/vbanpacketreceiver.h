@@ -25,7 +25,7 @@ namespace nap
          * Has to be overridden to handle incoming audio data for the stream
          * @param buffers multichannel audio buffer containing audio for each channel in the stream
          */
-        virtual void pushBuffers(std::vector<std::vector<float>>& buffers) = 0;
+        virtual void pushBuffers(const std::vector<std::vector<float>>& buffers) = 0;
 
         /**
          * @return Has to return the name of the VBAN audio stream that this receiver will handle.

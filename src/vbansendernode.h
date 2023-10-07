@@ -58,9 +58,9 @@ namespace nap
             int mPacketChannelSize = 0;
             int mPacketWritePosition = 0;
             std::vector<nap::uint8> mPacketBuffer;
-            std::vector<nap::uint8*> mPacketChannelOffsets;
             VBanHeader* mPacketHeader = nullptr;
 
+            size_t mPacketSize = 0;
             uint32_t mFrameCounter = 0;
             uint8_t mSampleRateFormat = 0;
             std::string mStreamName;

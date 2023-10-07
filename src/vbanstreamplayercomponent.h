@@ -105,7 +105,7 @@ namespace nap
              * Pushes the buffers to the buffer players
              * @param buffers the buffers to push
              */
-			void pushBuffers(std::vector<std::vector<float>>& buffers) override;
+			void pushBuffers(const std::vector<std::vector<float>>& buffers) override;
 
             /**
              * Sets streamname this VBANStreamPlayer accepts
