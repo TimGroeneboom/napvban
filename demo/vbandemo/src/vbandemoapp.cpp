@@ -142,6 +142,13 @@ namespace nap
                 playback_component_instance.stop();
             }
         }
+		if (ImGui::Checkbox("Active", &mSenderActive))
+		{
+			if (mSenderActive)
+				vban_stream_sender_component_instance.setStreamName(vban_stream_sender_component->mStreamName);
+			else
+				vban_stream_sender_component_instance.setStreamName("");
+		}
 
         ImGui::Spacing();
 

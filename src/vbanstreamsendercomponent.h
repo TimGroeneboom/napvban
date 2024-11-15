@@ -22,13 +22,13 @@ namespace nap
 {
 	namespace audio
 	{
-        // Forward declares
+		// Forward declares
 		class VBANStreamSenderComponentInstance;
 
-        /**
-         * The VBANStreamSenderComponent takes the input of an audio component and translates that into a VBAN stream
-         * that will be send via the UDP Client
-         */
+		/**
+		 * The VBANStreamSenderComponent takes the input of an audio component and translates that into a VBAN stream
+		 * that will be send via the UDP Client
+		 */
 		class NAPAPI VBANStreamSenderComponent : public AudioComponentBase
 		{
 			RTTI_ENABLE(AudioComponentBase)
@@ -41,49 +41,55 @@ namespace nap
 			std::vector<int> mChannelRouting; ///< property: 'ChannelRouting' The component whose audio output will be send
 		};
 
-        /**
-         * VBANStreamSenderComponentInstance
-         * The instance of the VBANStreamSenderComponent, implements the DynamicProcessorNode::IProcessor interface
-         */
+		/**
+		 * VBANStreamSenderComponentInstance
+		 * The instance of the VBANStreamSenderComponent, implements the DynamicProcessorNode::IProcessor interface
+		 */
 		class NAPAPI VBANStreamSenderComponentInstance : public AudioComponentBaseInstance
 		{
 			RTTI_ENABLE(AudioComponentBaseInstance)
 		public:
-            /**
-             * Constructor
-             * @param entity entity
-             * @param resource resource
-             */
+			/**
+			 * Constructor
+			 * @param entity entity
+			 * @param resource resource
+			 */
 			VBANStreamSenderComponentInstance(EntityInstance& entity, Component& resource)
 				: AudioComponentBaseInstance(entity, resource)
 			{
 			}
 
-            /**
-             * Initializes the instance, returns false on failure
-             * @param errorState contains any error messages
-             * @return false on failure
-             */
-            bool init(utility::ErrorState& errorState) override;
+			/**
+			 * Initializes the instance, returns false on failure
+			 * @param errorState contains any error messages
+			 * @return false on failure
+			 */
+			bool init(utility::ErrorState& errorState) override;
 
-            /**
-             * Called before deconstruction
-             * Removes listener from VBANPacketReceiver
-             */
-            void onDestroy() override;
+			/**
+			 * Called before deconstruction
+			 * Removes listener from VBANPacketReceiver
+			 */
+			void onDestroy() override;
 
-            /**
-             * Returns amount of channels
-             * @return amount of channels
-             */
+			/**
+			 * Returns amount of channels
+			 * @return amount of channels
+			 */
 			int getChannelCount() const override { return mInput->getChannelCount(); }
 
-            /**
-             * Returns output pin for given channel, no bound checking, assert on out of bound
-             * @param channel the channel
-             * @return OutputPin for channel
-             */
+			/**
+			 * Returns output pin for given channel, no bound checking, assert on out of bound
+			 * @param channel the channel
+			 * @return OutputPin for channel
+			 */
 			OutputPin* getOutputForChannel(int channel) override { return mInput->getOutputForChannel(channel); }
+
+			/**
+			 * Sets the name of the stream being sent
+			 * @param name New name of the stream
+			 */
+			void setStreamName(const std::string& name);
 
 		private:
 			ComponentInstancePtr<audio::AudioComponentBase> mInput	= {this, &VBANStreamSenderComponent::mInput};

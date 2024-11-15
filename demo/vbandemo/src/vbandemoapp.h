@@ -92,5 +92,6 @@ namespace nap
         std::vector<audio::ControllerValue> mPlotSenderValues = { };
         uint32 mSenderTickIdx = 0;
 
+		bool mSenderActive = true;
     };
 }

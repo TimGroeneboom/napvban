@@ -31,19 +31,23 @@ namespace nap
 	{
 		void VBANStreamPlayerComponentInstance::onDestroy()
 		{
-            mVbanListener->removeStreamListener(this);
+            mVbanReceiver->removeStreamListener(this);
 		}
 
 
 		bool VBANStreamPlayerComponentInstance::init(utility::ErrorState& errorState)
 		{
-            // acquire audio service
-            mAudioService = getEntityInstance()->getCore()->getService<AudioService>();
+
 
             // acquire resources
 			mResource = getComponent<VBANStreamPlayerComponent>();
-			mVbanListener = mResource->mVBANPacketReceiver.get();
+			mVbanReceiver = mResource->mVBANPacketReceiver.get();
 			mStreamName = mResource->mStreamName;
+			// TODO: MAKE NICER
+
+			// acquire audio service
+			mAudioService = getEntityInstance()->getCore()->getService<AudioService>();
+
 			mNodeManager = &mAudioService->getNodeManager();
 			mChannelRouting = mResource->mChannelRouting;
 
@@ -54,12 +58,12 @@ namespace nap
 			for (auto channel = 0; channel < mChannelRouting.size(); ++channel)
 			{
 				auto bufferPlayer = mNodeManager->makeSafe<SampleQueuePlayerNode>(*mNodeManager);
-                bufferPlayer->mMaxQueueSize = mResource->mMaxBufferSize;
+                bufferPlayer->setMaxQueueSize(mResource->mMaxBufferSize);
 				mBufferPlayers.emplace_back(std::move(bufferPlayer));
 			}
 
             // register to the packet receiver
-            mVbanListener->registerStreamListener(this);
+            mVbanReceiver->registerStreamListener(this);
 
 			return true;
 		}
@@ -67,14 +71,12 @@ namespace nap
 
 		void VBANStreamPlayerComponentInstance::pushBuffers(const std::vector<std::vector<float>>& buffers)
 		{
-			if(buffers.size() >= getChannelCount())
+			if (buffers.size() >= getChannelCount())
 			{
 				for(int i = 0; i < mBufferPlayers.size(); i++)
-				{
 					mBufferPlayers[i]->queueSamples(&buffers[i][0], buffers[i].size());
-				}
-			}else
-			{
+			}
+			else {
 				nap::Logger::warn("error received %i buffers but expected %i", buffers.size(), getChannelCount());
 			}
 		}

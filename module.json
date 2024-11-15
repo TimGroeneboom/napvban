@@ -4,7 +4,7 @@
     "DemoApp" : "vbandemo",
     "RequiredModules": [
         "napudp",
-        "napaudio"
+        "napportaudio"
     ], 
     "WindowsDllSearchPaths": []
 }

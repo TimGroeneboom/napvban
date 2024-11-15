@@ -11,7 +11,7 @@
 #include "vbanutils.h"
 
 RTTI_BEGIN_CLASS(nap::VBANPacketReceiver)
-RTTI_PROPERTY("Server", &nap::VBANPacketReceiver::mServer, nap::rtti::EPropertyMetaData::Required)
+	RTTI_PROPERTY("Server", &nap::VBANPacketReceiver::mServer, nap::rtti::EPropertyMetaData::Required)
 RTTI_END_CLASS
 
 namespace nap
@@ -19,7 +19,7 @@ namespace nap
 
 	bool VBANPacketReceiver::init(utility::ErrorState& errorState)
 	{
-        mServer->registerListenerSlot(mPacketReceivedSlot);
+		mServer->registerListenerSlot(mPacketReceivedSlot);
 
 		return true;
 	}
@@ -27,64 +27,60 @@ namespace nap
 
 	void VBANPacketReceiver::packetReceived(const UDPPacket &packet)
 	{
-        // Process adding or removing receivers
-        mTaskQueue.process();
+		// Process adding or removing receivers
+		mTaskQueue.process();
 
 		utility::ErrorState errorState;
-		if (checkPacket(errorState, &packet.data()[0], packet.size()) ) {
-            struct VBanHeader const *const hdr = (struct VBanHeader *) (&packet.data()[0]);
+		if (checkPacket(errorState, &packet.data()[0], packet.size()) )
+		{
+			struct VBanHeader const *const hdr = (struct VBanHeader *) (&packet.data()[0]);
 
-            // get packet meta-data
-            int const nb_samples = hdr->format_nbs + 1;
-            int const nb_channels = hdr->format_nbc + 1;
-            size_t sample_size = VBanBitResolutionSize[static_cast<const VBanBitResolution>(hdr->format_bit &
-                                                                                            VBAN_BIT_RESOLUTION_MASK)];
-            size_t payload_size = nb_samples * sample_size * nb_channels;
+			// get sample rate
+			int const sample_rate_format = hdr->format_SR & VBAN_SR_MASK;
+			if (int sample_rate = 0; utility::getSampleRateFromVBANSampleRateFormat(sample_rate, sample_rate_format, errorState))
+			{
+				// get stream name, use it to forward buffers to any registered stream audio receivers
+				const std::string stream_name(hdr->streamname);
+				for (auto *receiver: mReceivers)
+				{
+					if (receiver->getStreamName() == stream_name)
+					{
+						// get packet meta-data
+						int const nb_samples = hdr->format_nbs + 1;
+						int const nb_channels = hdr->format_nbc + 1;
+						size_t sample_size = VBanBitResolutionSize[static_cast<const VBanBitResolution>(hdr->format_bit &
+							VBAN_BIT_RESOLUTION_MASK)];
+						size_t payload_size = nb_samples * sample_size * nb_channels;
 
-            // create buffers to push to players
-            std::vector<std::vector<float>> buffers;
-            int float_buffer_size = (payload_size / sample_size) / nb_channels;
-            for (int i = 0; i < nb_channels; i++) {
-                std::vector<float> new_buffer;
-                new_buffer.resize(float_buffer_size);
-                buffers.emplace_back(new_buffer);
-            }
+						// Resize buffers to push to players
+						int float_buffer_size = int(payload_size / sample_size) / nb_channels;
+						mBuffers.resize(nb_channels);
+						for (auto& buffer: mBuffers)
+							buffer.resize(float_buffer_size);
 
-            // convert WAVE PCM multiplexed signal into floating point (SampleValue) buffers for each channel
-            for (size_t i = 0; i < float_buffer_size; i++)
-            {
-                for (int c = 0; c < nb_channels; c++)
-                {
-                    size_t pos = (i * nb_channels * 2) + (c * 2) + VBAN_HEADER_SIZE;
-                    char byte_1 = packet.data()[pos];
-                    char byte_2 = packet.data()[pos + 1];
-                    short original_value = ((static_cast<short>(byte_2)) << 8) | (0x00ff & byte_1);
+						// convert WAVE PCM multiplexed signal into floating point (SampleValue) buffers for each channel
+						for (size_t i = 0; i < float_buffer_size; i++)
+						{
+							for (int c = 0; c < nb_channels; c++)
+							{
+								size_t pos = (i * nb_channels * 2) + (c * 2) + VBAN_HEADER_SIZE;
+								char byte_1 = packet.data()[pos];
+								char byte_2 = packet.data()[pos + 1];
+								short original_value = ((static_cast<short>(byte_2)) << 8) | (0x00ff & byte_1);
 
-                    buffers[c][i] = ((float) original_value) / (float) 32768;
-                }
-            }
+								mBuffers[c][i] = ((float) original_value) / (float) 32768;
+							}
+						}
 
-            // get sample rate
-            int const sample_rate_format   = hdr->format_SR & VBAN_SR_MASK;
-            int sample_rate = 0;
-            if(utility::getSampleRateFromVBANSampleRateFormat(sample_rate, sample_rate_format, errorState))
-            {
-                // get stream name, use it to forward buffers to any registered stream audio receivers
-                std::string stream_name(hdr->streamname);
-                for(auto* receiver : mReceivers)
-                {
-                    if(receiver->getStreamName() == stream_name)
-                    {
-                        receiver->pushBuffers(buffers);
-                    }
-                }
-            }else
-            {
-                nap::Logger::error(errorState.toString());
-            }
+						receiver->pushBuffers(mBuffers);
+					}
+				}
+			}
+			else {
+				nap::Logger::error(errorState.toString());
+			}
 		}
-        else
-        {
+		else {
 			nap::Logger::warn(*this, errorState.toString());
 		}
 	}
@@ -108,8 +104,8 @@ namespace nap
 		if(!errorState.check(hdr->format_bit == VBAN_BITFMT_16_INT, "reserved format bit invalid value, only 16 bit PCM supported at this time"))
 			return false;
 
-        if(!errorState.check((hdr->format_nbc + 1) > 0, "channel count cannot be 0 or smaller"))
-            return false;
+		if(!errorState.check((hdr->format_nbc + 1) > 0, "channel count cannot be 0 or smaller"))
+			return false;
 
 		// check protocol and codec
 		protocol        = static_cast<VBanProtocol>(hdr->format_SR & VBAN_PROTOCOL_MASK);
@@ -119,15 +115,15 @@ namespace nap
 		{
 			switch (protocol)
 			{
-			case VBAN_PROTOCOL_SERIAL:
-			case VBAN_PROTOCOL_TXT:
-			case VBAN_PROTOCOL_UNDEFINED_1:
-			case VBAN_PROTOCOL_UNDEFINED_2:
-			case VBAN_PROTOCOL_UNDEFINED_3:
-			case VBAN_PROTOCOL_UNDEFINED_4:
-				errorState.fail("protocol not supported yet");
-			default:
-				errorState.fail("packet with unknown protocol");
+				case VBAN_PROTOCOL_SERIAL:
+				case VBAN_PROTOCOL_TXT:
+				case VBAN_PROTOCOL_UNDEFINED_1:
+				case VBAN_PROTOCOL_UNDEFINED_2:
+				case VBAN_PROTOCOL_UNDEFINED_3:
+				case VBAN_PROTOCOL_UNDEFINED_4:
+					errorState.fail("protocol not supported yet");
+				default:
+					errorState.fail("packet with unknown protocol");
 			}
 
 			return false;
@@ -190,7 +186,7 @@ namespace nap
 
 			if(it != mReceivers.end())
 			{
-			  	mReceivers.erase(it);
+				mReceivers.erase(it);
 			}
 		});
 	}

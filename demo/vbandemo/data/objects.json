@@ -121,32 +121,37 @@
         {
             "Type": "nap::UDPClient",
             "mID": "UDPClient",
-            "Thread": "UDPThread",
+            "Thread": "UDPClientThread",
             "AllowFailure": false,
-            "Endpoint": "127.0.0.1",
             "Broadcast": false,
+            "Endpoint": "127.0.0.1",
             "Port": 13251,
-            "MaxQueueSize": 1000,
+            "MaxQueueSize": 1000000,
             "StopOnMaxQueueSizeExceeded": true
         },
         {
-            "Type": "nap::UDPServer",
-            "mID": "UDPServer",
-            "Thread": "UDPThread",
-            "AllowFailure": false,
-            "Port": 13251,
-            "IP Address": "",
-            "Multicast Groups": []
+            "Type": "nap::UDPThread",
+            "mID": "UDPClientThread",
+            "Update Method": "Spawn Own Thread"
         },
         {
             "Type": "nap::UDPThread",
-            "mID": "UDPThread",
+            "mID": "UDPServerThread",
             "Update Method": "Spawn Own Thread"
         },
         {
             "Type": "nap::VBANPacketReceiver",
             "mID": "VBANPacketReceiver",
             "Server": "UDPServer"
+        },
+        {
+            "Type": "nap::VBANUDPServer",
+            "mID": "UDPServer",
+            "Thread": "UDPServerThread",
+            "AllowFailure": false,
+            "Port": 13251,
+            "IP Address": "",
+            "Multicast Groups": []
         },
         {
             "Type": "nap::audio::AudioFileResource",
